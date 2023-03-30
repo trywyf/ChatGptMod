@@ -6,6 +6,9 @@ import json
 from base.module import command, BaseModule
 from pyrogram.types import Message
 
+from sqlalchemy import select
+from .db import Base, VilanderGay
+
 class ChatGptMod(BaseModule):
     @command("chatgpt")
     async def chatcmd(self, _, message: Message):
@@ -33,19 +36,34 @@ class ChatGptMod(BaseModule):
             await message.reply_text(chatgpt_text)
         except Exception as e:
             await message.reply(f"{unk} <b>{str(e)}</b>")
+    
+    @property
+    def db_meta(self):
+        return Base.metadata
+
     @command("key")
     async def keysys(self, _, message: Message):
+        arg = message.text.split()
+        if len(arg) < 2:
+            await message.reply(nkey)
+            return
+        user_key = arg[1]
         kadd = self.S["key"]["keyadded"]
         nkey = self.S["key"]["nokey"]
         unk = self.S["errors"]["unknown"]
+        
+        user_db_key = VilanderGay(openai_key=user_key)
+        self.db.session.add(user_db_key)
+        self.db.session.commit()
+
+        openai_key = ""
+
+        for item in self.db.session.scalar(select(VilanderGay)):
+            item: VilanderGay
+            openai_key += item.openai_key
 
         try:
-            arg = message.text.split()
-            if len(arg) < 2:
-                await message.reply(nkey)
-                return
-            user_key = arg[1]
-            openai.api_key = user_key
+            openai.api_key = openai_key
             await message.reply(kadd)
         except Exception as e:
             await message.reply(f"{unk} <b>{str(e)}</b>")
